@@ -116,7 +116,7 @@ document.getElementById('ticker').addEventListener('keydown', e => {
   if (e.key === 'Enter') doScan();
 });
 
-async function doScan(exp_ts) {
+async function doScan(_, exp) {
   const ticker = document.getElementById('ticker').value.trim().toUpperCase();
   if (!ticker) return;
   const thresh = parseFloat(document.getElementById('thresh').value) || 25;
@@ -127,7 +127,7 @@ async function doScan(exp_ts) {
   document.getElementById('out').innerHTML = '<div class="msg-box info"><span class="spinner"></span>Načítám data pro ' + ticker + '…</div>';
 
   const params = new URLSearchParams({ thresh, r: rate / 100 });
-  if (exp_ts) params.set('exp_ts', exp_ts);
+  if (exp) params.set('exp', exp);
   const url = BASE + '/api/scan/' + encodeURIComponent(ticker) + '?' + params;
 
   try {
@@ -164,7 +164,7 @@ function renderResult(data) {
 
   // expiration pills
   let expHtml = data.expirations.map(e =>
-    `<button class="${e.ts === data.selected_exp ? 'on' : ''}" onclick="doScan(${e.ts})">${e.label}</button>`
+    `<button class="${e === data.selected_exp ? 'on' : ''}" onclick="doScan(undefined, '${e}')">${e}</button>`
   ).join('');
 
   // summary strip
