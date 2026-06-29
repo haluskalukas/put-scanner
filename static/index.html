@@ -57,10 +57,13 @@ h1{font-size:26px;font-weight:700;line-height:1.2;}
 /* signal badge */
 .sig{display:inline-block;font-family:var(--mono);font-size:10px;font-weight:700;
   padding:2px 7px;border-radius:4px;letter-spacing:.5px;}
+.sig-strong\+{background:rgba(63,182,168,.30);color:#fff;border:1px solid var(--teal);}
 .sig-strong{background:rgba(63,182,168,.18);color:var(--teal);}
 .sig-ok{background:rgba(224,168,48,.12);color:var(--amber);}
 .sig-illiquid{background:rgba(91,102,117,.15);color:var(--faint);}
 .sig-pass{display:none;}
+.vol-unusual{color:var(--red);font-weight:700;}
+.vol-elevated{color:var(--amber);}
 
 /* liquidity dot */
 .liq{display:inline-block;width:7px;height:7px;border-radius:50%;vertical-align:middle;margin-right:3px;}
@@ -169,7 +172,7 @@ document.addEventListener('mousemove', e => {
 });
 
 const COL_INFO = {
-  signal:     'Celkové hodnocení: STRONG = bohaté prémium + dostatečná likvidita + těsný spread. OK = splňuje dvě z tří. ILLIQUID = bohaté prémium, ale nízká likvidita.',
+  signal:     'STRONG+ = bohaté prémium + likvidita + spread + potvrzení (RV Rank nebo Vol/OI). STRONG = bohaté prémium + likvidita + spread. OK = splňuje dvě z tří. ILLIQUID = bohaté prémium, ale nízká likvidita.',
   strike:     'Cena, za kterou se zavazuješ akcie koupit (při přiřazení). ITM = strike je nad aktuální cenou akcie.',
   mid:        'Střed mezi bid a ask — reálná cena prémia, kterou pravděpodobně dostaneš.',
   sigma:      'Implikovaná volatilita (IV) — jak velký pohyb trh čeká. Vyšší = dražší pojistka = větší prémium.',
@@ -182,6 +185,7 @@ const COL_INFO = {
   theta:      'Časový rozpad — kolik prémia denně "padá" ve tvůj prospěch. Vyšší = lepší pro prodávajícího.',
   oi:         'Open Interest — počet otevřených kontraktů. Nízký OI = méně kupců, těžší výstup z pozice.',
   volume:     'Dnešní obchodovaný objem. Vysoký volume + OI = silná likvidita.',
+  vol_oi:     'Poměr dnešního volume / open interest. Oranžově ≥ 0.3 (zvýšená aktivita), červeně ≥ 1.0 (objem přesáhl celý OI — velmi neobvyklé, silný signál poptávky).',
   spread_pct: 'Šířka bid/ask spreadu jako % mid ceny. Pod 15% = ok, 15–40% = wide, nad 40% = nepoužitelné.',
 };
 
@@ -254,9 +258,12 @@ function renderTable(data) {
       : `<strong>$${money(p.strike,1)}</strong>`;
     const ivClass = p.tier === 'rich' ? 'rich-iv' : p.tier === 'warm' ? 'warm-iv' : 'ok-iv';
     const liqDot  = `<span class="liq liq-${p.liquidity}"></span>`;
+    const sigCls = p.signal === 'strong+' ? 'strong\\+' : (p.signal || 'pass');
     const sigHtml = p.signal && p.signal !== 'pass'
-      ? `<span class="sig sig-${p.signal}">${p.signal.toUpperCase()}</span>` : '';
+      ? `<span class="sig sig-${sigCls}">${p.signal.toUpperCase()}</span>` : '';
     const spreadClass = p.spread_flag === 'bad' ? 'spread-bad' : p.spread_flag === 'wide' ? 'spread-wide' : '';
+    const volOiClass = p.vol_oi_flag === 'unusual' ? 'vol-unusual' : p.vol_oi_flag === 'elevated' ? 'vol-elevated' : '';
+    const volOiTxt = p.vol_oi != null ? p.vol_oi.toFixed(2) : '—';
     return `<tr class="${p.tier}">
       <td>${lamp(p.tier,11)}</td>
       <td>${strikeLabel}</td>
@@ -273,13 +280,14 @@ function renderTable(data) {
       <td style="color:var(--teal)">${num(Math.abs(p.theta),3)}</td>
       <td>${liqDot}${p.open_interest.toLocaleString()}</td>
       <td style="color:var(--dim)">${p.volume.toLocaleString()}</td>
+      <td class="${volOiClass}">${volOiTxt}</td>
       <td class="${spreadClass}">${pct(p.spread_pct,0)}</td>
     </tr>`;
   }).join('');
 
   const tbody = document.querySelector('#mainTable tbody');
   if (tbody) {
-    tbody.innerHTML = rows || '<tr><td colspan="16" style="text-align:center;padding:24px;color:var(--faint)">Žádné puty splňují filtry pro tuto expiraci.</td></tr>';
+    tbody.innerHTML = rows || '<tr><td colspan="17" style="text-align:center;padding:24px;color:var(--faint)">Žádné puty splňují filtry pro tuto expiraci.</td></tr>';
     // update sort indicators
     document.querySelectorAll('th[data-col]').forEach(th => {
       th.classList.toggle('sorted', th.dataset.col === sortCol);
@@ -289,8 +297,9 @@ function renderTable(data) {
 }
 
 function renderResult(data) {
-  const richCount  = data.puts.filter(p => p.tier === 'rich').length;
-  const strongCount = data.puts.filter(p => p.signal === 'strong').length;
+  const richCount   = data.puts.filter(p => p.tier === 'rich').length;
+  const strongCount = data.puts.filter(p => p.signal === 'strong' || p.signal === 'strong+').length;
+  const strongPlus  = data.puts.filter(p => p.signal === 'strong+').length;
 
   const expHtml = data.expirations.map(e => {
     const hasEarnings = data.earnings_date && data.earnings_date <= e;
@@ -305,8 +314,9 @@ function renderResult(data) {
   const stripHtml = `
     <div class="sitem"><div class="sl">SPOT</div><div class="sv">$${money(data.spot)}</div></div>
     <div class="sitem"><div class="sl">REALIZED VOL (30d)</div><div class="sv" style="color:var(--teal)">${pct(data.realized,1)}</div></div>
-    <div class="sitem"><div class="sl">RICH PRÉMIA</div><div class="sv" style="color:${richCount ? 'var(--red)' : 'var(--teal)'}">${richCount} putů</div></div>
-    <div class="sitem"><div class="sl">STRONG SIGNÁL</div><div class="sv" style="color:${strongCount ? 'var(--teal)' : 'var(--faint)'}">${strongCount} putů</div></div>
+    <div class="sitem"><div class="sl">RV RANK (52W)</div><div class="sv" style="color:${data.rv_rank >= 80 ? 'var(--red)' : data.rv_rank >= 60 ? 'var(--amber)' : 'var(--teal)'}">${data.rv_rank != null ? data.rv_rank+'%' : '—'}</div></div>
+    <div class="sitem"><div class="sl">RICH PRÉMIA</div><div class="sv" style="color:${richCount ? 'var(--red)' : 'var(--faint)'}">${richCount} putů</div></div>
+    <div class="sitem"><div class="sl">STRONG+ / STRONG</div><div class="sv"><span style="color:var(--teal)">${strongPlus}</span><span style="color:var(--dim)"> / ${strongCount}</span></div></div>
     ${data.earnings_date ? `<div class="sitem"><div class="sl">EARNINGS</div><div class="sv" style="color:${data.earnings_warning ? 'var(--amber)' : 'var(--faint);font-size:13px'}">${data.earnings_date}</div></div>` : ''}`;
 
   const thHtml = (col, label, extra='') =>
@@ -325,8 +335,10 @@ function renderResult(data) {
         ${lamp('rich',11)} Bohaté prémium &nbsp;
         ${lamp('warm',11)} Mírně zvýšené &nbsp;
         ${lamp('ok',11)} V normálu &nbsp;&nbsp;
-        <span><span class="sig sig-strong">STRONG</span> nejlepší příležitost</span>
+        <span><span class="sig sig-strong\+">STRONG+</span> všechny faktory</span>
+        <span><span class="sig sig-strong">STRONG</span> bohaté + likvidní</span>
         <span><span class="liq liq-high"></span>vysoká / <span class="liq liq-med"></span>střední / <span class="liq liq-low"></span>nízká likvidita</span>
+        <span><span class="vol-unusual">červený Vol/OI</span> = neobvyklá poptávka dnes</span>
         <span style="color:var(--amber)">⚠ earnings v expiračním období</span>
       </div>
       <div class="tbl-wrap">
@@ -347,6 +359,7 @@ function renderResult(data) {
             ${thHtml('theta','Theta/d')}
             ${thHtml('open_interest','OI')}
             ${thHtml('volume','Vol')}
+            ${thHtml('vol_oi','Vol/OI')}
             ${thHtml('spread_pct','Spread')}
           </tr></thead>
           <tbody></tbody>

@@ -64,7 +64,7 @@ def solve_iv(price, S, K, T, r):
     return (lo + hi) / 2
 
 def analyze_put(S, K, dte, premium, iv_raw, r, realized, rich_thresh,
-                open_interest=0, volume=0, bid=0, ask=0):
+                open_interest=0, volume=0, bid=0, ask=0, rv_rank=None):
     T = dte / 365
     sigma = iv_raw
     if (sigma is None or sigma <= 0) and premium > 0:
@@ -90,6 +90,15 @@ def analyze_put(S, K, dte, premium, iv_raw, r, realized, rich_thresh,
     spread_pct = spread / premium if premium > 0 else 99
     spread_flag = "ok" if spread_pct < 0.15 else ("wide" if spread_pct < 0.40 else "bad")
 
+    # Vol/OI poměr — neobvyklá dnešní aktivita
+    vol_oi = round(volume / open_interest, 2) if open_interest > 0 else None
+    vol_oi_flag = "normal"
+    if vol_oi is not None:
+        if vol_oi >= 1.0:
+            vol_oi_flag = "unusual"   # objem přesáhl celý OI — velmi neobvyklé
+        elif vol_oi >= 0.3:
+            vol_oi_flag = "elevated"  # zvýšená aktivita
+
     # liquidity score: combines OI and volume
     liquidity = "low"
     if open_interest >= 500 or volume >= 100:
@@ -107,12 +116,26 @@ def analyze_put(S, K, dte, premium, iv_raw, r, realized, rich_thresh,
     if roc_annual >= 0.6:
         tier = "rich" if tier != "ok" else "warm"
 
-    # overall signal: rich + liquid + tight spread = best opportunity
-    if tier in ("rich", "warm") and liquidity in ("high", "med") and spread_flag == "ok":
+    # bonus signálový bod za RV Rank a Vol/OI
+    bonus = 0
+    if rv_rank is not None and rv_rank >= 70:
+        bonus += 1   # IV je historicky vysoká
+    if vol_oi_flag in ("elevated", "unusual"):
+        bonus += 1   # neobvyklá poptávka dnes
+
+    # overall signal
+    base_good = tier in ("rich", "warm")
+    liquid_ok = liquidity in ("high", "med")
+    spread_ok = spread_flag == "ok"
+    score = sum([base_good, liquid_ok, spread_ok]) + bonus
+
+    if base_good and liquid_ok and spread_ok and bonus >= 1:
+        signal = "strong+"   # všechno + historická/poptávková potvrzení
+    elif base_good and liquid_ok and spread_ok:
         signal = "strong"
-    elif tier in ("rich", "warm") and liquidity != "low":
+    elif base_good and liquid_ok:
         signal = "ok"
-    elif tier in ("rich", "warm"):
+    elif base_good:
         signal = "illiquid"
     else:
         signal = "pass"
@@ -131,6 +154,8 @@ def analyze_put(S, K, dte, premium, iv_raw, r, realized, rich_thresh,
         "spread_pct": round(spread_pct * 100, 1),
         "spread_flag": spread_flag,
         "liquidity":  liquidity,
+        "vol_oi":     vol_oi,
+        "vol_oi_flag": vol_oi_flag,
         "signal":     signal,
         "tier":       tier,
     }
@@ -152,7 +177,8 @@ def parse_osi(sym):
 # ── Data fetchers ──────────────────────────────────────────────────────────────
 
 async def fetch_spot_and_realized(ticker, client):
-    url = f"https://query1.finance.yahoo.com/v8/finance/chart/{ticker}?interval=1d&range=60d"
+    # 1 rok dat — stačí pro RV Rank i 30d realized vol
+    url = f"https://query1.finance.yahoo.com/v8/finance/chart/{ticker}?interval=1d&range=365d"
     r = await client.get(url, headers=HEADERS)
     r.raise_for_status()
     data = r.json()
@@ -163,10 +189,24 @@ async def fetch_spot_and_realized(ticker, client):
         raise ValueError("Nedostatek historických dat")
     spot = closes[-1]
 
-    # 30-day realized vol
+    # 30-day realized vol (poslední měsíc)
     c30 = closes[-31:] if len(closes) >= 31 else closes
     lr30 = [math.log(c30[i] / c30[i-1]) for i in range(1, len(c30))]
     rv30 = statistics.stdev(lr30) * math.sqrt(252)
+
+    # RV Rank — kde je dnešní 30d RV v kontextu posledního roku
+    # Počítáme rolling 21d RV pro každý den a zjistíme percentil
+    rv_rank = None
+    if len(closes) >= 52:
+        window = 21
+        rolling_rvs = []
+        for i in range(window, len(closes)):
+            chunk = closes[i-window:i+1]
+            lr = [math.log(chunk[j] / chunk[j-1]) for j in range(1, len(chunk))]
+            rolling_rvs.append(statistics.stdev(lr) * math.sqrt(252))
+        if rolling_rvs:
+            below = sum(1 for v in rolling_rvs if v <= rv30)
+            rv_rank = round(below / len(rolling_rvs) * 100, 0)
 
     # fetch earnings date from Yahoo summary
     earnings_date = None
@@ -180,7 +220,7 @@ async def fetch_spot_and_realized(ticker, client):
     except Exception:
         pass
 
-    return spot, rv30, earnings_date
+    return spot, rv30, rv_rank, earnings_date
 
 async def fetch_cboe_chain(ticker, client):
     urls = [
@@ -206,7 +246,7 @@ async def scan(ticker: str, r: float = 0.04, thresh: float = 25.0, exp: str = ""
 
     async with httpx.AsyncClient(timeout=20, follow_redirects=True) as client:
         try:
-            spot, realized, earnings_date = await fetch_spot_and_realized(ticker, client)
+            spot, realized, rv_rank, earnings_date = await fetch_spot_and_realized(ticker, client)
         except Exception as e:
             raise HTTPException(502, f"Chyba při načítání ceny: {e}")
         try:
@@ -278,6 +318,7 @@ async def scan(ticker: str, r: float = 0.04, thresh: float = 25.0, exp: str = ""
             iv_raw=iv_val if iv_val and iv_val > 0 else None,
             r=r, realized=realized, rich_thresh=rich_thresh,
             open_interest=oi, volume=volume, bid=bid, ask=ask,
+            rv_rank=rv_rank,
         )
         if metrics is None:
             continue
@@ -299,6 +340,7 @@ async def scan(ticker: str, r: float = 0.04, thresh: float = 25.0, exp: str = ""
         "ticker":           ticker,
         "spot":             round(spot, 2),
         "realized":         round(realized * 100, 1),
+        "rv_rank":          rv_rank,
         "expirations":      expirations,
         "selected_exp":     selected_exp,
         "earnings_date":    earnings_date,
