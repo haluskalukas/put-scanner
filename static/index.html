@@ -14,36 +14,39 @@
 }
 *{box-sizing:border-box;margin:0;padding:0;}
 html,body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:100vh;}
-.wrap{max-width:900px;margin:0 auto;padding:24px 16px 80px;}
+.wrap{max-width:1100px;margin:0 auto;padding:24px 16px 80px;}
 h1{font-size:26px;font-weight:700;line-height:1.2;}
 .eyebrow{font-size:11px;letter-spacing:2px;color:var(--teal);font-family:var(--mono);margin-bottom:8px;}
-.sub{color:var(--dim);font-size:13px;margin-top:8px;line-height:1.6;max-width:600px;}
-.lamp{display:inline-block;border-radius:50%;vertical-align:middle;flex-shrink:0;}
+.sub{color:var(--dim);font-size:13px;margin-top:8px;line-height:1.6;max-width:680px;}
 
-/* search bar */
+/* search */
 .searchbar{display:flex;gap:8px;margin:24px 0 0;}
 .searchbar input{flex:1;background:var(--panel);border:1px solid var(--line);border-radius:10px;
-  color:var(--text);font-family:var(--mono);font-size:17px;padding:13px 16px;outline:none;
-  transition:border-color .15s;}
+  color:var(--text);font-family:var(--mono);font-size:17px;padding:13px 16px;outline:none;transition:border-color .15s;}
 .searchbar input:focus{border-color:var(--teal);}
 .searchbar button{background:var(--teal);color:#06231f;border:none;border-radius:10px;
   padding:0 24px;font-weight:700;font-size:15px;cursor:pointer;white-space:nowrap;}
 .searchbar button:disabled{opacity:.5;cursor:default;}
 
-/* settings row */
-.settings{display:flex;gap:12px;margin-top:12px;flex-wrap:wrap;}
+/* settings */
+.settings{display:flex;gap:12px;margin-top:12px;flex-wrap:wrap;align-items:flex-end;}
 .setting{display:flex;flex-direction:column;gap:4px;}
 .setting .lab{font-size:10.5px;letter-spacing:.4px;color:var(--faint);font-family:var(--mono);}
 .setting .ibox{position:relative;}
-.setting input{width:120px;background:var(--panel);border:1px solid var(--line);border-radius:8px;
+.setting input{width:110px;background:var(--panel);border:1px solid var(--line);border-radius:8px;
   color:var(--text);font-family:var(--mono);font-size:14px;padding:8px 28px 8px 10px;outline:none;}
 .setting .suf{position:absolute;right:9px;top:50%;transform:translateY(-50%);color:var(--faint);font-size:12px;}
 
-/* exp pills */
+/* expirations */
 .exps{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px;}
 .exps button{background:var(--panel);border:1px solid var(--line);border-radius:20px;color:var(--dim);
-  font-family:var(--mono);font-size:12px;padding:5px 12px;cursor:pointer;}
+  font-family:var(--mono);font-size:12px;padding:5px 12px;cursor:pointer;transition:all .15s;}
 .exps button.on{background:var(--panel2);border-color:var(--teal);color:var(--teal);}
+.exps button.earnings{border-color:var(--amber) !important;color:var(--amber) !important;}
+
+/* earnings warning */
+.earnings-warn{display:flex;align-items:center;gap:8px;padding:10px 14px;background:rgba(224,168,48,.08);
+  border:1px solid rgba(224,168,48,.35);border-radius:8px;font-size:12.5px;color:var(--amber);margin-bottom:12px;}
 
 /* summary strip */
 .strip{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px;
@@ -51,42 +54,71 @@ h1{font-size:26px;font-weight:700;line-height:1.2;}
 .sitem .sl{font-size:10.5px;color:var(--dim);margin-bottom:3px;}
 .sitem .sv{font-family:var(--mono);font-size:17px;font-weight:600;}
 
+/* signal badge */
+.sig{display:inline-block;font-family:var(--mono);font-size:10px;font-weight:700;
+  padding:2px 7px;border-radius:4px;letter-spacing:.5px;}
+.sig-strong{background:rgba(63,182,168,.18);color:var(--teal);}
+.sig-ok{background:rgba(224,168,48,.12);color:var(--amber);}
+.sig-illiquid{background:rgba(91,102,117,.15);color:var(--faint);}
+.sig-pass{display:none;}
+
+/* liquidity dot */
+.liq{display:inline-block;width:7px;height:7px;border-radius:50%;vertical-align:middle;margin-right:3px;}
+.liq-high{background:var(--teal);}
+.liq-med{background:var(--amber);}
+.liq-low{background:var(--faint);}
+
 /* table */
 .tbl-wrap{overflow-x:auto;border-radius:12px;border:1px solid var(--line);}
 table{width:100%;border-collapse:collapse;background:var(--panel);}
-th,td{font-family:var(--mono);font-size:13px;padding:10px 10px;text-align:right;white-space:nowrap;}
-th{font-size:10px;letter-spacing:.5px;color:var(--faint);border-bottom:1px solid var(--line);position:sticky;top:0;background:var(--panel);}
+th,td{font-family:var(--mono);font-size:12.5px;padding:9px 9px;text-align:right;white-space:nowrap;}
+th{font-size:10px;letter-spacing:.5px;color:var(--faint);border-bottom:1px solid var(--line);
+   position:sticky;top:0;background:var(--panel);cursor:pointer;user-select:none;}
+th:hover{color:var(--dim);}
+th.sorted{color:var(--teal);}
 th:nth-child(2),td:nth-child(2){text-align:left;}
-tr:not(:last-child) td{border-bottom:1px solid rgba(35,44,56,.6);}
-tr.rich{background:rgba(229,72,77,.07);}
-tr.warm{background:rgba(224,168,48,.05);}
-tr:hover td{background:rgba(255,255,255,.025);}
+th:first-child,td:first-child{text-align:center;}
+tr:not(:last-child) td{border-bottom:1px solid rgba(35,44,56,.5);}
+tr.rich{background:rgba(229,72,77,.06);}
+tr.warm{background:rgba(224,168,48,.04);}
+tr:hover td{background:rgba(255,255,255,.02);}
 td.rich-iv{color:var(--red);}
 td.warm-iv{color:var(--amber);}
 td.ok-iv{color:var(--dim);}
 td.pop{color:var(--teal);}
 td.roc-hot{color:var(--amber);}
+td.spread-bad{color:var(--red);}
+td.spread-wide{color:var(--amber);}
 
-/* status / error */
+/* tooltip header */
+th[title]{position:relative;}
+
+/* lamp */
+.lamp{display:inline-block;border-radius:50%;vertical-align:middle;flex-shrink:0;}
+
+/* legend */
+.legend{display:flex;gap:16px;flex-wrap:wrap;margin:10px 0 14px;font-size:12px;color:var(--dim);}
+.legend span{display:flex;align-items:center;gap:5px;}
+
+/* status */
 .msg-box{padding:14px 16px;border-radius:10px;font-size:13.5px;line-height:1.6;margin-top:16px;}
 .msg-box.err{background:rgba(229,72,77,.08);border:1px solid rgba(229,72,77,.35);color:var(--red);}
 .msg-box.info{background:var(--panel);border:1px solid var(--line);color:var(--dim);}
 .spinner{display:inline-block;width:16px;height:16px;border:2px solid var(--line);border-top-color:var(--teal);
   border-radius:50%;animation:spin .7s linear infinite;vertical-align:middle;margin-right:8px;}
 @keyframes spin{to{transform:rotate(360deg);}}
-
-/* legend */
-.legend{display:flex;gap:16px;flex-wrap:wrap;margin:10px 0 16px;font-size:12px;color:var(--dim);}
-.legend span{display:flex;align-items:center;gap:5px;}
-
 .foot{margin-top:28px;font-size:11px;color:var(--faint);line-height:1.6;border-top:1px solid var(--line);padding-top:14px;}
+
+/* tooltip popup */
+.tip{position:fixed;background:#1c2531;border:1px solid var(--line);border-radius:8px;padding:10px 14px;
+  font-size:12px;color:var(--dim);max-width:280px;line-height:1.6;z-index:999;pointer-events:none;display:none;box-shadow:0 4px 20px rgba(0,0,0,.5);}
 </style>
 </head>
 <body>
 <div class="wrap">
   <div class="eyebrow">PUT WRITER · PREMIUM SCANNER</div>
-  <h1>Kdy je prémium <span style="color:var(--amber)">moc vysoké?</span></h1>
-  <p class="sub">Zadej ticker — stáhneme živý opční řetězec (Yahoo Finance, ~15 min zpoždění) a zvýrazníme puty, kde IV výrazně přebíjí realizovanou volatilitu.</p>
+  <h1>Kde jsou <span style="color:var(--teal)">opravdu dobrá</span> prémia?</h1>
+  <p class="sub">Zadej ticker — vidíš živý opční řetězec s filtrací likvidity a šířky spreadu. Nejlepší příležitosti jsou označeny <strong style="color:var(--teal)">STRONG</strong>.</p>
 
   <div class="searchbar">
     <input id="ticker" placeholder="Ticker: AAPL, SPY, TSLA…" autocomplete="off" autocapitalize="characters"/>
@@ -95,8 +127,16 @@ td.roc-hot{color:var(--amber);}
 
   <div class="settings">
     <div class="setting">
-      <div class="lab">PRÁH „RICH" (IV/RV − 1)</div>
+      <div class="lab">PRÁH „RICH" IV/RV</div>
       <div class="ibox"><input id="thresh" value="25"><span class="suf">%</span></div>
+    </div>
+    <div class="setting">
+      <div class="lab">MIN. OPEN INTEREST</div>
+      <div class="ibox"><input id="min_oi" value="50"></div>
+    </div>
+    <div class="setting">
+      <div class="lab">MAX. BID/ASK SPREAD</div>
+      <div class="ibox"><input id="max_spread" value="40"><span class="suf">%</span></div>
     </div>
     <div class="setting">
       <div class="lab">BEZRIZ. SAZBA</div>
@@ -107,119 +147,216 @@ td.roc-hot{color:var(--amber);}
   <div id="out"></div>
 </div>
 
-<script>
-const BASE = '';  // same origin
+<div class="tip" id="tip"></div>
 
-let state = null;
+<script>
+const BASE = '';
+let currentData = null;
+let sortCol = 'strike';
+let sortDir = -1; // -1 = desc
 
 document.getElementById('ticker').addEventListener('keydown', e => {
   if (e.key === 'Enter') doScan();
 });
 
+// tooltip
+const tipEl = document.getElementById('tip');
+document.addEventListener('mousemove', e => {
+  if (tipEl.style.display === 'block') {
+    tipEl.style.left = (e.clientX + 14) + 'px';
+    tipEl.style.top  = (e.clientY + 10) + 'px';
+  }
+});
+
+const COL_INFO = {
+  signal:     'Celkové hodnocení: STRONG = bohaté prémium + dostatečná likvidita + těsný spread. OK = splňuje dvě z tří. ILLIQUID = bohaté prémium, ale nízká likvidita.',
+  strike:     'Cena, za kterou se zavazuješ akcie koupit (při přiřazení). ITM = strike je nad aktuální cenou akcie.',
+  mid:        'Střed mezi bid a ask — reálná cena prémia, kterou pravděpodobně dostaneš.',
+  sigma:      'Implikovaná volatilita (IV) — jak velký pohyb trh čeká. Vyšší = dražší pojistka = větší prémium.',
+  iv_rv:      'Poměr IV / Realized Vol. Větší než 1,25 = trh platí výrazně víc, než akcie reálně dělá. Může to být způsobeno zvýšenou poptávkou po ochraně (instituce), blížícím se eventem nebo jednoduše chybou trhu.',
+  pop:        'Probability of Profit — pravděpodobnost, že kontrakt vyprší bezcenný a ty si necháš celé prémium.',
+  prob_itm:   'Pravděpodobnost, že akcie bude pod strikem při expiraci (budeš přiřazen).',
+  roc_annual: 'Roční výnos z kapitálu (prémium / strike × 365/DTE). Nad 60% bývá příliš dobré na to, aby to byla náhoda.',
+  delta:      'Jak moc se cena opce mění při pohybu akcie o $1. Typická zóna pro put writing: 0.15–0.30.',
+  vega:       'Jak moc se cena opce mění při pohybu IV o 1%. Záporná u short put = pokles IV ti vydělá.',
+  theta:      'Časový rozpad — kolik prémia denně "padá" ve tvůj prospěch. Vyšší = lepší pro prodávajícího.',
+  oi:         'Open Interest — počet otevřených kontraktů. Nízký OI = méně kupců, těžší výstup z pozice.',
+  volume:     'Dnešní obchodovaný objem. Vysoký volume + OI = silná likvidita.',
+  spread_pct: 'Šířka bid/ask spreadu jako % mid ceny. Pod 15% = ok, 15–40% = wide, nad 40% = nepoužitelné.',
+};
+
 async function doScan(_, exp) {
   const ticker = document.getElementById('ticker').value.trim().toUpperCase();
   if (!ticker) return;
-  const thresh = parseFloat(document.getElementById('thresh').value) || 25;
-  const rate   = parseFloat(document.getElementById('rate').value) || 4;
+  const thresh     = parseFloat(document.getElementById('thresh').value) || 25;
+  const rate       = parseFloat(document.getElementById('rate').value) || 4;
+  const min_oi     = parseInt(document.getElementById('min_oi').value) || 0;
+  const max_spread = parseFloat(document.getElementById('max_spread').value) || 40;
 
-  const btn = document.getElementById('scanBtn');
-  btn.disabled = true;
-  document.getElementById('out').innerHTML = '<div class="msg-box info"><span class="spinner"></span>Načítám data pro ' + ticker + '…</div>';
+  document.getElementById('scanBtn').disabled = true;
+  document.getElementById('out').innerHTML = '<div class="msg-box info"><span class="spinner"></span>Načítám ' + ticker + '…</div>';
 
-  const params = new URLSearchParams({ thresh, r: rate / 100 });
+  const params = new URLSearchParams({ thresh, r: rate / 100, min_oi, max_spread });
   if (exp) params.set('exp', exp);
-  const url = BASE + '/api/scan/' + encodeURIComponent(ticker) + '?' + params;
 
   try {
-    const res = await fetch(url);
+    const res  = await fetch(BASE + '/api/scan/' + encodeURIComponent(ticker) + '?' + params);
     const data = await res.json();
     if (!res.ok) throw new Error(data.detail || 'Chyba serveru');
-    state = data;
+    currentData = data;
+    sortCol = 'strike'; sortDir = -1;
     renderResult(data);
   } catch (err) {
     document.getElementById('out').innerHTML = '<div class="msg-box err">⚠ ' + err.message + '</div>';
   } finally {
-    btn.disabled = false;
+    document.getElementById('scanBtn').disabled = false;
   }
 }
 
 function tierColor(t) {
   return t === 'rich' ? 'var(--red)' : t === 'warm' ? 'var(--amber)' : 'var(--teal)';
 }
-
 function lamp(tier, size) {
-  const col = tierColor(tier);
-  const on = tier !== 'ok';
+  const col = tierColor(tier), on = tier !== 'ok';
   const glow = on ? `box-shadow:0 0 ${size*.9}px ${col},0 0 ${size*.3}px ${col} inset;` : 'border:1px solid #232c38;';
   return `<span class="lamp" style="width:${size}px;height:${size}px;background:${on ? col : '#2a3441'};${glow}"></span>`;
 }
+function pct(v, d=1)  { return v == null ? '—' : v.toFixed(d) + '%'; }
+function money(v, d=2){ return v == null ? '—' : v.toFixed(d); }
+function num(v, d=2)  { return v == null ? '—' : v.toFixed(d); }
 
-function pct(v, d=1) { return v == null ? '—' : v.toFixed(d) + '%'; }
-function money(v, d=2) { return v == null ? '—' : v.toFixed(d); }
+function attachTipListeners() {
+  document.querySelectorAll('th[data-col]').forEach(th => {
+    th.addEventListener('mouseenter', () => {
+      const col = th.dataset.col;
+      if (COL_INFO[col]) { tipEl.textContent = COL_INFO[col]; tipEl.style.display = 'block'; }
+    });
+    th.addEventListener('mouseleave', () => { tipEl.style.display = 'none'; });
+    th.addEventListener('click', () => {
+      const col = th.dataset.col;
+      if (sortCol === col) sortDir *= -1; else { sortCol = col; sortDir = -1; }
+      renderTable(currentData);
+    });
+  });
+}
+
+function renderTable(data) {
+  const puts = [...data.puts].sort((a, b) => {
+    const av = a[sortCol] ?? (sortDir > 0 ? Infinity : -Infinity);
+    const bv = b[sortCol] ?? (sortDir > 0 ? Infinity : -Infinity);
+    return sortDir * (bv - av);
+  });
+
+  const rows = puts.map(p => {
+    const itm = p.strike > data.spot;
+    const strikeLabel = itm
+      ? `<strong style="color:var(--amber)">$${money(p.strike,1)}</strong> <span style="font-size:10px;color:var(--amber)">ITM</span>`
+      : `<strong>$${money(p.strike,1)}</strong>`;
+    const ivClass = p.tier === 'rich' ? 'rich-iv' : p.tier === 'warm' ? 'warm-iv' : 'ok-iv';
+    const liqDot  = `<span class="liq liq-${p.liquidity}"></span>`;
+    const sigHtml = p.signal !== 'pass'
+      ? `<span class="sig sig-${p.signal}">${p.signal.toUpperCase()}</span>` : '';
+    const spreadClass = p.spread_flag === 'bad' ? 'spread-bad' : p.spread_flag === 'wide' ? 'spread-wide' : '';
+    return `<tr class="${p.tier}">
+      <td>${lamp(p.tier,11)}</td>
+      <td>${strikeLabel}</td>
+      <td>${sigHtml}</td>
+      <td>${money(p.bid)} / ${money(p.ask)}</td>
+      <td>${money(p.mid)}</td>
+      <td class="${ivClass}">${pct(p.sigma,0)}</td>
+      <td class="${ivClass}" style="font-weight:600">${p.iv_rv != null ? p.iv_rv.toFixed(2)+'×' : '—'}</td>
+      <td class="pop">${pct(p.pop,0)}</td>
+      <td>${pct(p.prob_itm,0)}</td>
+      <td class="${p.roc_annual >= 60 ? 'roc-hot' : ''}">${pct(p.roc_annual,0)}</td>
+      <td style="color:var(--dim)">${p.delta != null ? p.delta.toFixed(2) : '—'}</td>
+      <td style="color:var(--dim)">${num(p.vega,3)}</td>
+      <td style="color:var(--teal)">${num(Math.abs(p.theta),3)}</td>
+      <td>${liqDot}${p.open_interest.toLocaleString()}</td>
+      <td style="color:var(--dim)">${p.volume.toLocaleString()}</td>
+      <td class="${spreadClass}">${pct(p.spread_pct,0)}</td>
+    </tr>`;
+  }).join('');
+
+  const tbody = document.querySelector('#mainTable tbody');
+  if (tbody) {
+    tbody.innerHTML = rows || '<tr><td colspan="16" style="text-align:center;padding:24px;color:var(--faint)">Žádné puty splňují filtry pro tuto expiraci.</td></tr>';
+    // update sort indicators
+    document.querySelectorAll('th[data-col]').forEach(th => {
+      th.classList.toggle('sorted', th.dataset.col === sortCol);
+      th.textContent = th.dataset.label + (th.dataset.col === sortCol ? (sortDir < 0 ? ' ↓' : ' ↑') : '');
+    });
+  }
+}
 
 function renderResult(data) {
   const richCount  = data.puts.filter(p => p.tier === 'rich').length;
-  const warmCount  = data.puts.filter(p => p.tier === 'warm').length;
-  const bestIvRv   = data.puts.length ? Math.max(...data.puts.map(p => p.iv_rv || 0)) : 0;
+  const strongCount = data.puts.filter(p => p.signal === 'strong').length;
 
-  // expiration pills
-  let expHtml = data.expirations.map(e =>
-    `<button class="${e === data.selected_exp ? 'on' : ''}" onclick="doScan(undefined, '${e}')">${e}</button>`
-  ).join('');
-
-  // summary strip
-  let stripHtml = `
-    <div class="sitem"><div class="sl">SPOT</div><div class="sv">$${money(data.spot)}</div></div>
-    <div class="sitem"><div class="sl">REALIZED VOL (30d)</div><div class="sv" style="color:var(--teal)">${pct(data.realized, 1)}</div></div>
-    <div class="sitem"><div class="sl">BOHATÁ PRÉMIA</div><div class="sv" style="color:${richCount ? 'var(--red)' : 'var(--teal)'}">${richCount} / ${data.puts.length}</div></div>
-    <div class="sitem"><div class="sl">MAX IV/RV</div><div class="sv" style="color:${bestIvRv >= 1.25 ? 'var(--red)' : 'var(--dim)'}">${bestIvRv.toFixed(2)}×</div></div>`;
-
-  // table rows
-  let rows = data.puts.map(p => {
-    const ivClass = p.tier === 'rich' ? 'rich-iv' : p.tier === 'warm' ? 'warm-iv' : 'ok-iv';
-    const itm = p.strike > data.spot;
-    const strikeLabel = itm
-      ? `<strong style="color:var(--amber)">$${money(p.strike, 1)}</strong> <span style="font-size:10px;color:var(--amber);font-family:var(--mono)">ITM</span>`
-      : `<strong>$${money(p.strike, 1)}</strong>`;
-    return `<tr class="${p.tier}">
-      <td style="text-align:center">${lamp(p.tier, 11)}</td>
-      <td>${strikeLabel}</td>
-      <td>${money(p.bid)} / ${money(p.ask)}</td>
-      <td>${money(p.mid)}</td>
-      <td class="${ivClass}">${pct(p.sigma, 0)}</td>
-      <td>${p.iv_rv != null ? p.iv_rv.toFixed(2) + '×' : '—'}</td>
-      <td class="pop">${pct(p.pop, 0)}</td>
-      <td>${pct(p.prob_itm, 0)}</td>
-      <td class="${p.roc_annual >= 60 ? 'roc-hot' : ''}">${pct(p.roc_annual, 0)}</td>
-      <td style="color:var(--dim)">${p.delta != null ? p.delta.toFixed(2) : '—'}</td>
-      <td style="color:var(--dim)">$${money(p.fair)}</td>
-    </tr>`;
+  const expHtml = data.expirations.map(e => {
+    const hasEarnings = data.earnings_date && data.earnings_date <= e;
+    return `<button class="${e === data.selected_exp ? 'on' : ''} ${hasEarnings ? 'earnings' : ''}"
+      onclick="doScan(undefined,'${e}')" title="${hasEarnings ? '⚠ Earnings v tomto období!' : ''}">${e}${hasEarnings ? ' ⚠' : ''}</button>`;
   }).join('');
+
+  const earningsWarnHtml = data.earnings_warning
+    ? `<div class="earnings-warn">⚠ <strong>Pozor:</strong> earnings datum <strong>${data.earnings_date}</strong> spadá do tohoto expiračního období. IV je pravděpodobně nafouklá záměrně — po výsledcích přijde IV crush.</div>`
+    : '';
+
+  const stripHtml = `
+    <div class="sitem"><div class="sl">SPOT</div><div class="sv">$${money(data.spot)}</div></div>
+    <div class="sitem"><div class="sl">REALIZED VOL (30d)</div><div class="sv" style="color:var(--teal)">${pct(data.realized,1)}</div></div>
+    <div class="sitem"><div class="sl">RICH PRÉMIA</div><div class="sv" style="color:${richCount ? 'var(--red)' : 'var(--teal)'}">${richCount} putů</div></div>
+    <div class="sitem"><div class="sl">STRONG SIGNÁL</div><div class="sv" style="color:${strongCount ? 'var(--teal)' : 'var(--faint)'}">${strongCount} putů</div></div>
+    ${data.earnings_date ? `<div class="sitem"><div class="sl">EARNINGS</div><div class="sv" style="color:${data.earnings_warning ? 'var(--amber)' : 'var(--faint);font-size:13px'}">${data.earnings_date}</div></div>` : ''}`;
+
+  const thHtml = (col, label, extra='') =>
+    `<th data-col="${col}" data-label="${label}" ${extra}>${label}${col === sortCol ? (sortDir < 0 ? ' ↓' : ' ↑') : ''}</th>`;
 
   document.getElementById('out').innerHTML = `
     <div style="margin-top:20px">
       <div style="display:flex;align-items:baseline;gap:10px;margin-bottom:12px">
         <span style="font-size:20px;font-weight:700">${data.ticker}</span>
-        <span style="font-size:13px;color:var(--dim)">opční řetězec · ${data.puts.length} putů</span>
+        <span style="font-size:13px;color:var(--dim)">${data.puts.length} putů (po filtraci)</span>
       </div>
       <div class="exps">${expHtml}</div>
+      ${earningsWarnHtml}
       <div class="strip">${stripHtml}</div>
       <div class="legend">
-        <span>${lamp('rich',11)} Bohaté prémium (IV/RV ≥ práh)</span>
-        <span>${lamp('warm',11)} Mírně zvýšené</span>
-        <span>${lamp('ok',11)} V normálu</span>
+        ${lamp('rich',11)} Bohaté prémium &nbsp;
+        ${lamp('warm',11)} Mírně zvýšené &nbsp;
+        ${lamp('ok',11)} V normálu &nbsp;&nbsp;
+        <span><span class="sig sig-strong">STRONG</span> nejlepší příležitost</span>
+        <span><span class="liq liq-high"></span>vysoká / <span class="liq liq-med"></span>střední / <span class="liq liq-low"></span>nízká likvidita</span>
+        <span style="color:var(--amber)">⚠ earnings v expiračním období</span>
       </div>
       <div class="tbl-wrap">
-        <table>
+        <table id="mainTable">
           <thead><tr>
-            <th></th><th>Strike</th><th>Bid/Ask</th><th>Mid</th>
-            <th>IV</th><th>IV/RV</th><th>PoP</th><th>Prob ITM</th><th>ROC p.a.</th><th>|Δ|</th><th>Fair (BS)</th>
+            <th></th>
+            ${thHtml('strike','Strike')}
+            <th>Signál</th>
+            <th>Bid/Ask</th>
+            ${thHtml('mid','Mid')}
+            ${thHtml('sigma','IV')}
+            ${thHtml('iv_rv','IV/RV')}
+            ${thHtml('pop','PoP')}
+            ${thHtml('prob_itm','P(ITM)')}
+            ${thHtml('roc_annual','ROC p.a.')}
+            ${thHtml('delta','|Δ|')}
+            ${thHtml('vega','Vega')}
+            ${thHtml('theta','Theta/d')}
+            ${thHtml('open_interest','OI')}
+            ${thHtml('volume','Vol')}
+            ${thHtml('spread_pct','Spread')}
           </tr></thead>
-          <tbody>${rows || '<tr><td colspan="11" style="text-align:center;padding:24px;color:var(--faint)">Žádné puty pro tuto expiraci.</td></tr>'}</tbody>
+          <tbody></tbody>
         </table>
       </div>
-      <p class="foot">Není investiční doporučení. Data jsou zpožděná ~15 min. Black-Scholes podceňuje tail risk. Bohaté prémium ≠ zadarmo — vždy zkontroluj earnings / eventy.</p>
+      <p class="foot">Není investiční doporučení. Data zpožděná ~15 min (CBOE). Bohaté prémium ≠ zadarmo — earnings, events, a tail risk nejsou v modelu. Kliknutím na záhlaví tabulky seřadíš. Najeď myší na záhlaví pro vysvětlení.</p>
     </div>`;
+
+  attachTipListeners();
+  renderTable(data);
 }
 </script>
 </body>

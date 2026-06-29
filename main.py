@@ -17,24 +17,36 @@ HEADERS = {
 
 # ── Black-Scholes ──────────────────────────────────────────────────────────────
 
-def erf(x: float) -> float:
+def erf(x):
     s = -1 if x < 0 else 1
     x = abs(x)
     t = 1 / (1 + 0.3275911 * x)
     y = 1 - ((((1.061405429*t - 1.453152027)*t + 1.421413741)*t - 0.284496736)*t + 0.254829592)*t*math.exp(-x*x)
     return s * y
 
-def N(x: float) -> float:
+def N(x):
     return 0.5 * (1 + erf(x / math.sqrt(2)))
 
-def bs_put(S, K, T, r, sig) -> float:
+def bs_put(S, K, T, r, sig):
     if T <= 0 or sig <= 0:
         return max(K - S, 0)
     d1 = (math.log(S / K) + (r + 0.5*sig*sig)*T) / (sig*math.sqrt(T))
     d2 = d1 - sig*math.sqrt(T)
     return K*math.exp(-r*T)*N(-d2) - S*N(-d1)
 
-def solve_iv(price, S, K, T, r) -> float | None:
+def bs_greeks(S, K, T, r, sig):
+    if T <= 0 or sig <= 0:
+        return {}
+    d1 = (math.log(S / K) + (r + 0.5*sig*sig)*T) / (sig*math.sqrt(T))
+    d2 = d1 - sig*math.sqrt(T)
+    delta = -N(-d1)
+    gamma = math.exp(-d1*d1/2) / (S * sig * math.sqrt(T) * math.sqrt(2*math.pi))
+    vega  = S * math.exp(-d1*d1/2) / math.sqrt(2*math.pi) * math.sqrt(T) / 100
+    theta = (-(S * math.exp(-d1*d1/2) * sig) / (2 * math.sqrt(T) * math.sqrt(2*math.pi))
+             + r * K * math.exp(-r*T) * N(-d2)) / 365
+    return {"delta": delta, "gamma": gamma, "vega": vega, "theta": theta}
+
+def solve_iv(price, S, K, T, r):
     if T <= 0 or price <= 0:
         return None
     lo, hi = 0.001, 5.0
@@ -51,26 +63,41 @@ def solve_iv(price, S, K, T, r) -> float | None:
             lo = m
     return (lo + hi) / 2
 
-def analyze_put(S, K, dte, premium, iv_raw, r, realized, rich_thresh):
+def analyze_put(S, K, dte, premium, iv_raw, r, realized, rich_thresh,
+                open_interest=0, volume=0, bid=0, ask=0):
     T = dte / 365
     sigma = iv_raw
     if (sigma is None or sigma <= 0) and premium > 0:
         sigma = solve_iv(premium, S, K, T, r)
     if sigma is None or sigma <= 0:
         return None
-    d1 = (math.log(S / K) + (r + 0.5*sigma*sigma)*T) / (sigma*math.sqrt(T))
-    d2 = d1 - sigma*math.sqrt(T)
-    delta = -N(-d1)
-    prob_itm = N(-d2)
-    fair = bs_put(S, K, T, r, sigma)
+
+    greeks = bs_greeks(S, K, T, r, sigma)
+    delta    = greeks.get("delta", 0)
+    prob_itm = N(-(math.log(S/K) + (r - 0.5*sigma*sigma)*T) / (sigma*math.sqrt(T))) if T > 0 else (1 if K > S else 0)
+    fair     = bs_put(S, K, T, r, sigma)
     breakeven = K - premium
     pop = None
-    if breakeven > 0:
+    if breakeven > 0 and T > 0:
         dbe = (math.log(S / breakeven) + (r - 0.5*sigma*sigma)*T) / (sigma*math.sqrt(T))
         pop = N(dbe)
     roc_annual = (premium / K) * (365 / dte) if dte > 0 else 0
-    touch = min(1.0, 2 * prob_itm)
+
     iv_rv = sigma / realized if realized > 0 else None
+
+    # bid/ask spread quality: 0=ok, 1=wide, 2=unusable
+    spread = ask - bid
+    spread_pct = spread / premium if premium > 0 else 99
+    spread_flag = "ok" if spread_pct < 0.15 else ("wide" if spread_pct < 0.40 else "bad")
+
+    # liquidity score: combines OI and volume
+    liquidity = "low"
+    if open_interest >= 500 or volume >= 100:
+        liquidity = "high"
+    elif open_interest >= 100 or volume >= 20:
+        liquidity = "med"
+
+    # tier based on IV/RV
     tier = "ok"
     if iv_rv is not None:
         if iv_rv >= rich_thresh:
@@ -79,118 +106,166 @@ def analyze_put(S, K, dte, premium, iv_raw, r, realized, rich_thresh):
             tier = "warm"
     if roc_annual >= 0.6:
         tier = "rich" if tier != "ok" else "warm"
+
+    # overall signal: rich + liquid + tight spread = best opportunity
+    if tier in ("rich", "warm") and liquidity in ("high", "med") and spread_flag == "ok":
+        signal = "strong"
+    elif tier in ("rich", "warm") and liquidity != "low":
+        signal = "ok"
+    elif tier in ("rich", "warm"):
+        signal = "illiquid"
+    else:
+        signal = "pass"
+
     return {
-        "sigma": round(sigma * 100, 1),
-        "fair": round(fair, 2),
-        "delta": round(abs(delta), 2),
-        "prob_itm": round(prob_itm * 100, 1),
-        "pop": round(pop * 100, 1) if pop is not None else None,
-        "breakeven": round(breakeven, 2),
+        "sigma":      round(sigma * 100, 1),
+        "fair":       round(fair, 2),
+        "delta":      round(abs(delta), 2),
+        "vega":       round(greeks.get("vega", 0), 3),
+        "theta":      round(greeks.get("theta", 0), 3),
+        "prob_itm":   round(prob_itm * 100, 1),
+        "pop":        round(pop * 100, 1) if pop is not None else None,
+        "breakeven":  round(breakeven, 2),
         "roc_annual": round(roc_annual * 100, 1),
-        "touch": round(touch * 100, 1),
-        "iv_rv": round(iv_rv, 2) if iv_rv else None,
-        "tier": tier,
+        "iv_rv":      round(iv_rv, 2) if iv_rv else None,
+        "spread_pct": round(spread_pct * 100, 1),
+        "spread_flag": spread_flag,
+        "liquidity":  liquidity,
+        "signal":     signal,
+        "tier":       tier,
     }
 
-# ── OSI symbol parser ──────────────────────────────────────────────────────────
+# ── OSI parser ─────────────────────────────────────────────────────────────────
 
-def parse_osi(sym: str):
+def parse_osi(sym):
     sym = (sym or "").replace(" ", "")
     m = re.match(r"([A-Z.]+?)(\d{6})([CP])(\d{8})", sym)
     if not m:
         return None
     ymd = m.group(2)
-    cp = m.group(3)
-    strike = int(m.group(4)) / 1000
-    exp = datetime(2000 + int(ymd[:2]), int(ymd[2:4]), int(ymd[4:6]), tzinfo=timezone.utc)
-    return {"cp": cp, "strike": strike, "exp": exp}
+    return {
+        "cp":     m.group(3),
+        "strike": int(m.group(4)) / 1000,
+        "exp":    datetime(2000 + int(ymd[:2]), int(ymd[2:4]), int(ymd[4:6]), tzinfo=timezone.utc),
+    }
 
 # ── Data fetchers ──────────────────────────────────────────────────────────────
 
-async def fetch_spot_and_realized(ticker: str, client: httpx.AsyncClient):
-    url = f"https://query1.finance.yahoo.com/v8/finance/chart/{ticker}?interval=1d&range=40d"
+async def fetch_spot_and_realized(ticker, client):
+    url = f"https://query1.finance.yahoo.com/v8/finance/chart/{ticker}?interval=1d&range=60d"
     r = await client.get(url, headers=HEADERS)
     r.raise_for_status()
     data = r.json()
-    closes = data["chart"]["result"][0]["indicators"]["quote"][0]["close"]
+    result = data["chart"]["result"][0]
+    closes = result["indicators"]["quote"][0]["close"]
     closes = [c for c in closes if c is not None]
     if len(closes) < 5:
         raise ValueError("Nedostatek historických dat")
     spot = closes[-1]
-    log_returns = [math.log(closes[i] / closes[i-1]) for i in range(1, len(closes))]
-    realized = statistics.stdev(log_returns) * math.sqrt(252)
-    return spot, realized
 
-async def fetch_cboe_chain(ticker: str, client: httpx.AsyncClient):
+    # 30-day realized vol
+    c30 = closes[-31:] if len(closes) >= 31 else closes
+    lr30 = [math.log(c30[i] / c30[i-1]) for i in range(1, len(c30))]
+    rv30 = statistics.stdev(lr30) * math.sqrt(252)
+
+    # fetch earnings date from Yahoo summary
+    earnings_date = None
+    try:
+        url2 = f"https://query1.finance.yahoo.com/v8/finance/chart/{ticker}?interval=1d&range=1d"
+        r2 = await client.get(url2, headers=HEADERS)
+        meta = r2.json()["chart"]["result"][0]["meta"]
+        ed = meta.get("earningsTimestamp") or meta.get("earningsTimestampStart")
+        if ed:
+            earnings_date = datetime.fromtimestamp(ed, tz=timezone.utc).strftime("%Y-%m-%d")
+    except Exception:
+        pass
+
+    return spot, rv30, earnings_date
+
+async def fetch_cboe_chain(ticker, client):
     urls = [
         f"https://cdn.cboe.com/api/global/delayed_quotes/options/{ticker}.json",
         f"https://cdn.cboe.com/api/global/delayed_quotes/options/_{ticker}.json",
     ]
-    last_err = None
     for url in urls:
         try:
             r = await client.get(url, headers=HEADERS)
             if r.status_code == 200:
                 return r.json()
-        except Exception as e:
-            last_err = e
-    raise ValueError(f"CBOE: ticker nenalezen ({last_err})")
+        except Exception:
+            pass
+    raise ValueError("CBOE: ticker nenalezen")
 
-# ── API endpoint ───────────────────────────────────────────────────────────────
+# ── API ────────────────────────────────────────────────────────────────────────
 
 @app.get("/api/scan/{ticker}")
-async def scan(ticker: str, r: float = 0.04, thresh: float = 25.0, exp: str = ""):
+async def scan(ticker: str, r: float = 0.04, thresh: float = 25.0, exp: str = "",
+               min_oi: int = 50, max_spread: float = 40.0):
     ticker = ticker.upper().strip()
     rich_thresh = 1 + thresh / 100
 
     async with httpx.AsyncClient(timeout=20, follow_redirects=True) as client:
         try:
-            spot, realized = await fetch_spot_and_realized(ticker, client)
+            spot, realized, earnings_date = await fetch_spot_and_realized(ticker, client)
         except Exception as e:
             raise HTTPException(502, f"Chyba při načítání ceny: {e}")
-
         try:
             raw = await fetch_cboe_chain(ticker, client)
         except Exception as e:
             raise HTTPException(502, f"Chyba při načítání opčního řetězce: {e}")
 
-    data = raw.get("data", raw)
+    data     = raw.get("data", raw)
     all_opts = data.get("options", [])
-    now = datetime.now(timezone.utc)
+    now      = datetime.now(timezone.utc)
 
-    # collect unique expirations from put symbols
+    # collect expirations
     exp_set: set[str] = set()
     for o in all_opts:
-        sym = o.get("option", "")
-        meta = parse_osi(sym)
+        meta = parse_osi(o.get("option", ""))
         if meta and meta["cp"] == "P" and meta["exp"] > now:
             exp_set.add(meta["exp"].strftime("%Y-%m-%d"))
     expirations = sorted(exp_set)
-
     if not expirations:
         raise HTTPException(404, "Nenalezeny žádné budoucí expirace")
 
     selected_exp = exp if exp in expirations else expirations[0]
 
-    # filter puts for selected expiration
+    # check if earnings fall within this expiration
+    earnings_warning = False
+    if earnings_date and earnings_date <= selected_exp:
+        earnings_warning = True
+
     puts = []
     for o in all_opts:
-        sym = o.get("option", "")
-        meta = parse_osi(sym)
+        meta = parse_osi(o.get("option", ""))
         if not meta or meta["cp"] != "P":
             continue
         if meta["exp"].strftime("%Y-%m-%d") != selected_exp:
             continue
+
         strike = meta["strike"]
-        if strike > spot * 1.5:  # odřízni extrémně vzdálené strikes (>50% nad spot)
+        if strike > spot * 1.5:
             continue
-        bid = float(o.get("bid") or 0)
-        ask = float(o.get("ask") or 0)
+
+        bid  = float(o.get("bid") or 0)
+        ask  = float(o.get("ask") or 0)
         last = float(o.get("last_trade_price") or 0)
         theo = float(o.get("theo") or 0)
-        mid = (bid + ask) / 2 if bid and ask else (last or theo)
+        mid  = (bid + ask) / 2 if bid and ask else (last or theo)
         if mid <= 0:
             continue
+
+        oi     = int(o.get("open_interest") or 0)
+        volume = int(o.get("volume") or 0)
+
+        # apply filters
+        if oi < min_oi:
+            continue
+        spread = ask - bid
+        spread_pct = (spread / mid * 100) if mid > 0 else 99
+        if spread_pct > max_spread:
+            continue
+
         iv_raw = o.get("iv")
         try:
             iv_val = float(iv_raw) if iv_raw is not None else None
@@ -202,27 +277,33 @@ async def scan(ticker: str, r: float = 0.04, thresh: float = 25.0, exp: str = ""
             S=spot, K=strike, dte=dte, premium=mid,
             iv_raw=iv_val if iv_val and iv_val > 0 else None,
             r=r, realized=realized, rich_thresh=rich_thresh,
+            open_interest=oi, volume=volume, bid=bid, ask=ask,
         )
         if metrics is None:
             continue
+
         puts.append({
-            "strike": strike,
-            "bid": round(bid, 2),
-            "ask": round(ask, 2),
-            "mid": round(mid, 2),
-            "dte": dte,
+            "strike":        strike,
+            "bid":           round(bid, 2),
+            "ask":           round(ask, 2),
+            "mid":           round(mid, 2),
+            "dte":           dte,
+            "open_interest": oi,
+            "volume":        volume,
             **metrics,
         })
 
     puts.sort(key=lambda x: x["strike"], reverse=True)
 
     return {
-        "ticker": ticker,
-        "spot": round(spot, 2),
-        "realized": round(realized * 100, 1),
-        "expirations": expirations,
-        "selected_exp": selected_exp,
-        "puts": puts,
+        "ticker":           ticker,
+        "spot":             round(spot, 2),
+        "realized":         round(realized * 100, 1),
+        "expirations":      expirations,
+        "selected_exp":     selected_exp,
+        "earnings_date":    earnings_date,
+        "earnings_warning": earnings_warning,
+        "puts":             puts,
     }
 
 app.mount("/", StaticFiles(directory="static", html=True), name="static")
