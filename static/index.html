@@ -254,7 +254,7 @@ function renderTable(data) {
       : `<strong>$${money(p.strike,1)}</strong>`;
     const ivClass = p.tier === 'rich' ? 'rich-iv' : p.tier === 'warm' ? 'warm-iv' : 'ok-iv';
     const liqDot  = `<span class="liq liq-${p.liquidity}"></span>`;
-    const sigHtml = p.signal !== 'pass'
+    const sigHtml = p.signal && p.signal !== 'pass'
       ? `<span class="sig sig-${p.signal}">${p.signal.toUpperCase()}</span>` : '';
     const spreadClass = p.spread_flag === 'bad' ? 'spread-bad' : p.spread_flag === 'wide' ? 'spread-wide' : '';
     return `<tr class="${p.tier}">
