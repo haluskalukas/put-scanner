@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
+<title>Put Premium Scanner</title>
+<style>
+:root{
+  --bg:#0f1419;--panel:#171d26;--panel2:#1c2531;--line:#232c38;
+  --text:#e6edf3;--dim:#8b97a6;--faint:#5b6675;
+  --teal:#3fb6a8;--amber:#e0a830;--red:#e5484d;--green:#3fb6a8;
+  --mono:ui-monospace,'SF Mono',Menlo,Consolas,monospace;
+  --sans:ui-sans-serif,system-ui,-apple-system,'Segoe UI',sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+html,body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:100vh;}
+.wrap{max-width:900px;margin:0 auto;padding:24px 16px 80px;}
+h1{font-size:26px;font-weight:700;line-height:1.2;}
+.eyebrow{font-size:11px;letter-spacing:2px;color:var(--teal);font-family:var(--mono);margin-bottom:8px;}
+.sub{color:var(--dim);font-size:13px;margin-top:8px;line-height:1.6;max-width:600px;}
+.lamp{display:inline-block;border-radius:50%;vertical-align:middle;flex-shrink:0;}
+
+/* search bar */
+.searchbar{display:flex;gap:8px;margin:24px 0 0;}
+.searchbar input{flex:1;background:var(--panel);border:1px solid var(--line);border-radius:10px;
+  color:var(--text);font-family:var(--mono);font-size:17px;padding:13px 16px;outline:none;
+  transition:border-color .15s;}
+.searchbar input:focus{border-color:var(--teal);}
+.searchbar button{background:var(--teal);color:#06231f;border:none;border-radius:10px;
+  padding:0 24px;font-weight:700;font-size:15px;cursor:pointer;white-space:nowrap;}
+.searchbar button:disabled{opacity:.5;cursor:default;}
+
+/* settings row */
+.settings{display:flex;gap:12px;margin-top:12px;flex-wrap:wrap;}
+.setting{display:flex;flex-direction:column;gap:4px;}
+.setting .lab{font-size:10.5px;letter-spacing:.4px;color:var(--faint);font-family:var(--mono);}
+.setting .ibox{position:relative;}
+.setting input{width:120px;background:var(--panel);border:1px solid var(--line);border-radius:8px;
+  color:var(--text);font-family:var(--mono);font-size:14px;padding:8px 28px 8px 10px;outline:none;}
+.setting .suf{position:absolute;right:9px;top:50%;transform:translateY(-50%);color:var(--faint);font-size:12px;}
+
+/* exp pills */
+.exps{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px;}
+.exps button{background:var(--panel);border:1px solid var(--line);border-radius:20px;color:var(--dim);
+  font-family:var(--mono);font-size:12px;padding:5px 12px;cursor:pointer;}
+.exps button.on{background:var(--panel2);border-color:var(--teal);color:var(--teal);}
+
+/* summary strip */
+.strip{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px;
+  background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px;margin-bottom:16px;}
+.sitem .sl{font-size:10.5px;color:var(--dim);margin-bottom:3px;}
+.sitem .sv{font-family:var(--mono);font-size:17px;font-weight:600;}
+
+/* table */
+.tbl-wrap{overflow-x:auto;border-radius:12px;border:1px solid var(--line);}
+table{width:100%;border-collapse:collapse;background:var(--panel);}
+th,td{font-family:var(--mono);font-size:13px;padding:10px 10px;text-align:right;white-space:nowrap;}
+th{font-size:10px;letter-spacing:.5px;color:var(--faint);border-bottom:1px solid var(--line);position:sticky;top:0;background:var(--panel);}
+th:nth-child(2),td:nth-child(2){text-align:left;}
+tr:not(:last-child) td{border-bottom:1px solid rgba(35,44,56,.6);}
+tr.rich{background:rgba(229,72,77,.07);}
+tr.warm{background:rgba(224,168,48,.05);}
+tr:hover td{background:rgba(255,255,255,.025);}
+td.rich-iv{color:var(--red);}
+td.warm-iv{color:var(--amber);}
+td.ok-iv{color:var(--dim);}
+td.pop{color:var(--teal);}
+td.roc-hot{color:var(--amber);}
+
+/* status / error */
+.msg-box{padding:14px 16px;border-radius:10px;font-size:13.5px;line-height:1.6;margin-top:16px;}
+.msg-box.err{background:rgba(229,72,77,.08);border:1px solid rgba(229,72,77,.35);color:var(--red);}
+.msg-box.info{background:var(--panel);border:1px solid var(--line);color:var(--dim);}
+.spinner{display:inline-block;width:16px;height:16px;border:2px solid var(--line);border-top-color:var(--teal);
+  border-radius:50%;animation:spin .7s linear infinite;vertical-align:middle;margin-right:8px;}
+@keyframes spin{to{transform:rotate(360deg);}}
+
+/* legend */
+.legend{display:flex;gap:16px;flex-wrap:wrap;margin:10px 0 16px;font-size:12px;color:var(--dim);}
+.legend span{display:flex;align-items:center;gap:5px;}
+
+.foot{margin-top:28px;font-size:11px;color:var(--faint);line-height:1.6;border-top:1px solid var(--line);padding-top:14px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="eyebrow">PUT WRITER · PREMIUM SCANNER</div>
+  <h1>Kdy je prémium <span style="color:var(--amber)">moc vysoké?</span></h1>
+  <p class="sub">Zadej ticker — stáhneme živý opční řetězec (Yahoo Finance, ~15 min zpoždění) a zvýrazníme puty, kde IV výrazně přebíjí realizovanou volatilitu.</p>
+
+  <div class="searchbar">
+    <input id="ticker" placeholder="Ticker: AAPL, SPY, TSLA…" autocomplete="off" autocapitalize="characters"/>
+    <button id="scanBtn" onclick="doScan()">Skenovat</button>
+  </div>
+
+  <div class="settings">
+    <div class="setting">
+      <div class="lab">PRÁH „RICH" (IV/RV − 1)</div>
+      <div class="ibox"><input id="thresh" value="25"><span class="suf">%</span></div>
+    </div>
+    <div class="setting">
+      <div class="lab">BEZRIZ. SAZBA</div>
+      <div class="ibox"><input id="rate" value="4"><span class="suf">%</span></div>
+    </div>
+  </div>
+
+  <div id="out"></div>
+</div>
+
+<script>
+const BASE = '';  // same origin
+
+let state = null;
+
+document.getElementById('ticker').addEventListener('keydown', e => {
+  if (e.key === 'Enter') doScan();
+});
+
+async function doScan(exp_ts) {
+  const ticker = document.getElementById('ticker').value.trim().toUpperCase();
+  if (!ticker) return;
+  const thresh = parseFloat(document.getElementById('thresh').value) || 25;
+  const rate   = parseFloat(document.getElementById('rate').value) || 4;
+
+  const btn = document.getElementById('scanBtn');
+  btn.disabled = true;
+  document.getElementById('out').innerHTML = '<div class="msg-box info"><span class="spinner"></span>Načítám data pro ' + ticker + '…</div>';
+
+  const params = new URLSearchParams({ thresh, r: rate / 100 });
+  if (exp_ts) params.set('exp_ts', exp_ts);
+  const url = BASE + '/api/scan/' + encodeURIComponent(ticker) + '?' + params;
+
+  try {
+    const res = await fetch(url);
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || 'Chyba serveru');
+    state = data;
+    renderResult(data);
+  } catch (err) {
+    document.getElementById('out').innerHTML = '<div class="msg-box err">⚠ ' + err.message + '</div>';
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+function tierColor(t) {
+  return t === 'rich' ? 'var(--red)' : t === 'warm' ? 'var(--amber)' : 'var(--teal)';
+}
+
+function lamp(tier, size) {
+  const col = tierColor(tier);
+  const on = tier !== 'ok';
+  const glow = on ? `box-shadow:0 0 ${size*.9}px ${col},0 0 ${size*.3}px ${col} inset;` : 'border:1px solid #232c38;';
+  return `<span class="lamp" style="width:${size}px;height:${size}px;background:${on ? col : '#2a3441'};${glow}"></span>`;
+}
+
+function pct(v, d=1) { return v == null ? '—' : v.toFixed(d) + '%'; }
+function money(v, d=2) { return v == null ? '—' : v.toFixed(d); }
+
+function renderResult(data) {
+  const richCount  = data.puts.filter(p => p.tier === 'rich').length;
+  const warmCount  = data.puts.filter(p => p.tier === 'warm').length;
+  const bestIvRv   = data.puts.length ? Math.max(...data.puts.map(p => p.iv_rv || 0)) : 0;
+
+  // expiration pills
+  let expHtml = data.expirations.map(e =>
+    `<button class="${e.ts === data.selected_exp ? 'on' : ''}" onclick="doScan(${e.ts})">${e.label}</button>`
+  ).join('');
+
+  // summary strip
+  let stripHtml = `
+    <div class="sitem"><div class="sl">SPOT</div><div class="sv">$${money(data.spot)}</div></div>
+    <div class="sitem"><div class="sl">REALIZED VOL (30d)</div><div class="sv" style="color:var(--teal)">${pct(data.realized, 1)}</div></div>
+    <div class="sitem"><div class="sl">BOHATÁ PRÉMIA</div><div class="sv" style="color:${richCount ? 'var(--red)' : 'var(--teal)'}">${richCount} / ${data.puts.length}</div></div>
+    <div class="sitem"><div class="sl">MAX IV/RV</div><div class="sv" style="color:${bestIvRv >= 1.25 ? 'var(--red)' : 'var(--dim)'}">${bestIvRv.toFixed(2)}×</div></div>`;
+
+  // table rows
+  let rows = data.puts.map(p => {
+    const ivClass = p.tier === 'rich' ? 'rich-iv' : p.tier === 'warm' ? 'warm-iv' : 'ok-iv';
+    const itm = p.strike > data.spot;
+    const strikeLabel = itm
+      ? `<strong style="color:var(--amber)">$${money(p.strike, 1)}</strong> <span style="font-size:10px;color:var(--amber);font-family:var(--mono)">ITM</span>`
+      : `<strong>$${money(p.strike, 1)}</strong>`;
+    return `<tr class="${p.tier}">
+      <td style="text-align:center">${lamp(p.tier, 11)}</td>
+      <td>${strikeLabel}</td>
+      <td>${money(p.bid)} / ${money(p.ask)}</td>
+      <td>${money(p.mid)}</td>
+      <td class="${ivClass}">${pct(p.sigma, 0)}</td>
+      <td>${p.iv_rv != null ? p.iv_rv.toFixed(2) + '×' : '—'}</td>
+      <td class="pop">${pct(p.pop, 0)}</td>
+      <td>${pct(p.prob_itm, 0)}</td>
+      <td class="${p.roc_annual >= 60 ? 'roc-hot' : ''}">${pct(p.roc_annual, 0)}</td>
+      <td style="color:var(--dim)">${p.delta != null ? p.delta.toFixed(2) : '—'}</td>
+      <td style="color:var(--dim)">$${money(p.fair)}</td>
+    </tr>`;
+  }).join('');
+
+  document.getElementById('out').innerHTML = `
+    <div style="margin-top:20px">
+      <div style="display:flex;align-items:baseline;gap:10px;margin-bottom:12px">
+        <span style="font-size:20px;font-weight:700">${data.ticker}</span>
+        <span style="font-size:13px;color:var(--dim)">opční řetězec · ${data.puts.length} putů</span>
+      </div>
+      <div class="exps">${expHtml}</div>
+      <div class="strip">${stripHtml}</div>
+      <div class="legend">
+        <span>${lamp('rich',11)} Bohaté prémium (IV/RV ≥ práh)</span>
+        <span>${lamp('warm',11)} Mírně zvýšené</span>
+        <span>${lamp('ok',11)} V normálu</span>
+      </div>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr>
+            <th></th><th>Strike</th><th>Bid/Ask</th><th>Mid</th>
+            <th>IV</th><th>IV/RV</th><th>PoP</th><th>Prob ITM</th><th>ROC p.a.</th><th>|Δ|</th><th>Fair (BS)</th>
+          </tr></thead>
+          <tbody>${rows || '<tr><td colspan="11" style="text-align:center;padding:24px;color:var(--faint)">Žádné puty pro tuto expiraci.</td></tr>'}</tbody>
+        </table>
+      </div>
+      <p class="foot">Není investiční doporučení. Data jsou zpožděná ~15 min. Black-Scholes podceňuje tail risk. Bohaté prémium ≠ zadarmo — vždy zkontroluj earnings / eventy.</p>
+    </div>`;
+}
+</script>
+</body>
+</html>
